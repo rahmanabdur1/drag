@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Template Builder with Undo/Redo</title>
+    <style>
+        /* Basic styling */
+        /* Customize as needed */
+    </style><style>
+        /* Basic Layout */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+        }
+        .sidebar, .customizer {
+            width: 200px;
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-right: 1px solid #ccc;
+        }
+        .canvas {
+            flex-grow: 1;
+            background-color: #e9e9e9;
+            padding: 10px;
+            margin: auto;
+            width: 100%;
+            height: auto;
+            position: relative;
+        }
+        .component {
+            margin: 5px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid transparent;  
+            cursor: move;
+            user-select: none;
+            border-radius: 5px;
+            transition: border-color 0.3s; 
+        }
+        .component:hover {
+            background-color: #ddd; 
+            border-color: black; 
+        }
+        .product-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid transparent;  
+            border-radius: 12px;
+            max-width: 400px;
+            margin: 10px 0;
+            transition: border-color 0.3s; 
+        }
+        .product-container:hover {
+            border-color: black; 
+        }
+        .product-container img {
+            width: 100%;
+            border-radius: 12px; 
+        }
+        h1, h2, p {
+            margin: 5px;  
+            border: 1px solid transparent; 
+            padding: 5px;  
+            width: 100%;  
+            border-radius: 5px; 
+            transition: border-color 0.3s; 
+        }
+        h1:hover, h2:hover, p:hover {
+            border-color: black; 
+        }
+        button {
+            margin-top: 16px;
+            padding: 12px 24px;
+            background-color: rgb(79,70,229);
+            color: #fff;
+            border-radius: 8px;
+            border: 1px solid black; 
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: rgb(67, 60, 207); 
+        }
+
+        /* Customizer Styles */
+        .customizer-section {
+            margin-bottom: 20px;
+        }
+        .customizer-section h3 {
+            margin-bottom: 5px;
+        }
+        .customizer-section label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Hide customizer by default */
+        .customizer {
+            display: none;
+        }
+    </style>
+</head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Template Builder with Undo/Redo</title>
+    <style>
+        /* Basic styling */
+        /* Customize as needed */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar with Components -->
+        <div class="sidebar" id="sidebar">
+            <h2>Components</h2>
+            <div class="component" draggable="true" id="oneProduct" ondragstart="drag(event)">One Product</div>
+        </div>
+
+        <!-- Canvas Area for Dropping Components -->
+        <div class="canvas" id="canvas" ondrop="drop(event)" ondragover="allowDrop(event)">
+            <h2>Drag Components Here</h2>
+        </div>
+
+        <!-- Customizer Panel for Editing Properties -->
+        <div class="customizer" id="customizer">
+            <h2>Customizer</h2>
+            <div class="customizer-section" id="titleCustomizer">
+                <h3>Title</h3>
+                <label for="titleText">Text:</label>
+                <input type="text" id="titleText" oninput="updateTitle()">
+                <label for="titleFontSize">Font Size:</label>
+                <input type="number" id="titleFontSize" oninput="updateTitle()">
+                <label for="titleFontColor">Font Color:</label>
+                <input type="color" id="titleFontColor" oninput="updateTitle()">
+            </div>
+            <div class="customizer-section" id="descriptionCustomizer">
+                <h3>Description</h3>
+                <label for="descriptionText">Text:</label>
+                <input type="text" id="descriptionText" oninput="updateDescription()">
+                <label for="descriptionFontSize">Font Size:</label>
+                <input type="number" id="descriptionFontSize" oninput="updateDescription()">
+                <label for="descriptionFontColor">Font Color:</label>
+                <input type="color" id="descriptionFontColor" oninput="updateDescription()">
+            </div>
+            <div class="customizer-section" id="buttonCustomizer">
+                <h3>Button</h3>
+                <label for="buttonText">Text:</label>
+                <input type="text" id="buttonText" oninput="updateButton()">
+                <label for="buttonColor">Background Color:</label>
+                <input type="color" id="buttonColor" oninput="updateButton()">
+            </div>
+            <button onclick="undo()">Undo</button>
+            <button onclick="redo()">Redo</button>
+        </div>
+    </div>
+
+    <script>
+        let activeComponent = null;
+
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        function drag(event) {
+            event.dataTransfer.setData("text", event.target.id);
+        }
+
+        function drop(event) {
+            event.preventDefault();
+            const componentId = event.dataTransfer.getData("text");
+
+            if (componentId === "oneProduct") {
+                addProductComponent();
+            }
+        }
+
+        function addProductComponent() {
+            const productContainer = createProductContainer();
+            document.getElementById("canvas").appendChild(productContainer);
+            saveCanvasState();
+        }
+
+        function createProductContainer() {
+            const productContainer = document.createElement("div");
+            productContainer.className = "product-container";
+
+            const productImage = document.createElement("img");
+            productImage.src = "https://react.email/static/braun-collection.jpg";
+            productImage.alt = "Braun Collection";
+            productContainer.appendChild(productImage);
+
+            const productTitle = document.createElement("h1");
+            productTitle.innerText = "Elegant Comfort";
+            productContainer.appendChild(productTitle);
+
+            const productDescription = document.createElement("p");
+            productDescription.innerText = "Dieter Rams' work has an outstanding quality...";
+            productContainer.appendChild(productDescription);
+
+            const productPrice = document.createElement("p");
+            productPrice.innerText = "$210.00";
+            productContainer.appendChild(productPrice);
+
+            const buyButton = document.createElement("button");
+            buyButton.innerText = "Buy now";
+            productContainer.appendChild(buyButton);
+
+            productContainer.historyStack = [];
+            productContainer.redoStack = [];
+
+            saveState(productContainer);
+
+            productContainer.onclick = function () {
+                activeComponent = productContainer;
+                openCustomizer(productContainer);
+            };
+
+            return productContainer;
+        }
+
+        function openCustomizer(component) {
+            const customizer = document.getElementById("customizer");
+            customizer.style.display = "block";
+
+            const title = component.querySelector('h1');
+            const description = component.querySelector('p:nth-of-type(1)');
+            const button = component.querySelector('button');
+
+            document.getElementById("titleText").value = title.innerText;
+            document.getElementById("titleFontSize").value = parseInt(window.getComputedStyle(title).fontSize);
+            document.getElementById("titleFontColor").value = rgbToHex(window.getComputedStyle(title).color);
+
+            document.getElementById("descriptionText").value = description.innerText;
+            document.getElementById("descriptionFontSize").value = parseInt(window.getComputedStyle(description).fontSize);
+            document.getElementById("descriptionFontColor").value = rgbToHex(window.getComputedStyle(description).color);
+
+            document.getElementById("buttonText").value = button.innerText;
+            document.getElementById("buttonColor").value = rgbToHex(window.getComputedStyle(button).backgroundColor);
+        }
+
+        function updateTitle() {
+            if (!activeComponent) return;
+            const title = activeComponent.querySelector('h1');
+            title.innerText = document.getElementById("titleText").value;
+            title.style.fontSize = document.getElementById("titleFontSize").value + 'px';
+            title.style.color = document.getElementById("titleFontColor").value;
+            saveState(activeComponent);
+        }
+
+        function updateDescription() {
+            if (!activeComponent) return;
+            const description = activeComponent.querySelector('p:nth-of-type(1)');
+            description.innerText = document.getElementById("descriptionText").value;
+            description.style.fontSize = document.getElementById("descriptionFontSize").value + 'px';
+            description.style.color = document.getElementById("descriptionFontColor").value;
+            saveState(activeComponent);
+        }
+
+        function updateButton() {
+            if (!activeComponent) return;
+            const button = activeComponent.querySelector('button');
+            button.innerText = document.getElementById("buttonText").value;
+            button.style.backgroundColor = document.getElementById("buttonColor").value;
+            saveState(activeComponent);
+        }
+
+        function rgbToHex(rgb) {
+            const rgbValues = rgb.match(/\d+/g);
+            return "#" + ((1 << 24) + (rgbValues[0] << 16) + (rgbValues[1] << 8) + (+rgbValues[2])).toString(16).slice(1).toUpperCase();
+        }
+
+        function saveState(component) {
+            const state = {
+                title: {
+                    text: component.querySelector('h1').innerText,
+                    fontSize: component.querySelector('h1').style.fontSize,
+                    color: component.querySelector('h1').style.color,
+                },
+                description: {
+                    text: component.querySelector('p:nth-of-type(1)').innerText,
+                    fontSize: component.querySelector('p:nth-of-type(1)').style.fontSize,
+                    color: component.querySelector('p:nth-of-type(1)').style.color,
+                },
+                button: {
+                    text: component.querySelector('button').innerText,
+                    backgroundColor: component.querySelector('button').style.backgroundColor,
+                }
+            };
+
+            component.historyStack.push(JSON.stringify(state));
+            component.redoStack = [];
+
+            saveCanvasState();
+        }
+
+        function saveCanvasState() {
+            const canvas = document.getElementById("canvas");
+            const canvasHTML = canvas.innerHTML;
+            const componentsData = Array.from(canvas.children).map((comp, index) => {
+                return {
+                    html: comp.outerHTML,
+                    historyStack: comp.historyStack,
+                    redoStack: comp.redoStack
+                };
+            });
+
+            localStorage.setItem("canvasState", JSON.stringify(componentsData));
+        }
+
+        function undo() {
+            if (!activeComponent || activeComponent.historyStack.length <= 1) return;
+
+            const previousState = activeComponent.historyStack.pop();
+            activeComponent.redoStack.push(previousState);
+            const lastState = JSON.parse(activeComponent.historyStack[activeComponent.historyStack.length - 1]);
+            restoreState(activeComponent, lastState);
+            saveCanvasState();
+        }
+
+        function redo() {
+            if (!activeComponent || activeComponent.redoStack.length === 0) return;
+
+            const nextState = activeComponent.redoStack.pop();
+            activeComponent.historyStack.push(nextState);
+            restoreState(activeComponent, JSON.parse(nextState));
+            saveCanvasState();
+        }
+
+        function restoreState(component, state) {
+            const title = component.querySelector('h1');
+            title.innerText = state.title.text;
+            title.style.fontSize = state.title.fontSize;
+            title.style.color = state.title.color;
+
+            const description = component.querySelector('p:nth-of-type(1)');
+            description.innerText = state.description.text;
+            description.style.fontSize = state.description.fontSize;
+            description.style.color = state.description.color;
+
+            const button = component.querySelector('button');
+            button.innerText = state.button.text;
+            button.style.backgroundColor = state.button.backgroundColor;
+
+            openCustomizer(component);
+        }
+
+        window.onload = function () {
+            const savedCanvasState = JSON.parse(localStorage.getItem("canvasState"));
+            if (savedCanvasState) {
+                const canvas = document.getElementById("canvas");
+                savedCanvasState.forEach((componentData) => {
+                    const componentElement = document.createElement('div');
+                    componentElement.innerHTML = componentData.html;
+                    const productContainer = componentElement.firstChild;
+                    productContainer.historyStack = componentData.historyStack || [];
+                    productContainer.redoStack = componentData.redoStack || [];
+
+                    productContainer.onclick = function () {
+                        activeComponent = productContainer;
+                        openCustomizer(productContainer);
+                    };
+
+                    canvas.appendChild(productContainer);
+                });
+            }
+        };
+    </script>
+</body>
+</html>
